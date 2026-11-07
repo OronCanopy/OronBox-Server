@@ -42,7 +42,7 @@ func (a *App) syncReleases(ctx context.Context) (synced int, syncErr error) {
 	all := []store.UpstreamRelease{}
 	client := &http.Client{Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	for page := 1; page <= 50; page++ {
-		req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/repos/zxor-org/oronbox/releases?per_page=100&page=%d", a.cfg.GitHub.APIURL, page), nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/repos/OronCanopy/OronBox/releases?per_page=100&page=%d", a.cfg.GitHub.APIURL, page), nil)
 		if err != nil {
 			return 0, err
 		}

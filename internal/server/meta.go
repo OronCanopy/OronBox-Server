@@ -65,8 +65,8 @@ func (a *App) handleLegalDocument(w http.ResponseWriter, r *http.Request) {
 }
 
 func bundledLegalRevision(name string) int {
-	if name == "terms" || name == "privacy" {
-		return 2
+	if _, ok := legalDocuments[name]; ok {
+		return 3
 	}
 	return 1
 }

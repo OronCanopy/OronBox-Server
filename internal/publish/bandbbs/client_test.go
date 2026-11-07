@@ -165,3 +165,110 @@ func TestBandBBSRelatedLinksAndPartialFailure(t *testing.T) {
 		t.Fatal("unsafe link allowed before external writes")
 	}
 }
+
+func TestBandBBSOverwritePreviousUpdateEditsInPlace(t *testing.T) {
+	var (
+		editedUpdateID string
+		createdUpdate  bool
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/resources/4201/updates":
+			_, _ = w.Write([]byte(`{"updates":[{"resource_update_id":12900,"title":"旧标题","message":"旧内容","can_edit":true}]}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/resource-updates/12900/":
+			_ = r.ParseForm()
+			editedUpdateID = "12900"
+			if r.PostForm.Get("title") != "新版本标题" || r.PostForm.Get("message") != "新版本说明" {
+				t.Errorf("unexpected edit update body: %v", r.PostForm)
+			}
+			_, _ = w.Write([]byte(`{"success":true,"update":{"resource_update_id":12900}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/resource-updates/":
+			createdUpdate = true
+			_, _ = w.Write([]byte(`{"success":true,"update":{"resource_update_id":12999}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := New(server.URL, nil, nil)
+
+	// 1. 测试 overwritePrevious: true 且内容变更时原地编辑
+	res, err := client.createUpdate(context.Background(), "token", "4201", "新版本标题", "新版本说明", false, true)
+	if err != nil {
+		t.Fatalf("createUpdate failed: %v", err)
+	}
+	if res.ID != "12900" {
+		t.Errorf("update ID = %q, want 12900", res.ID)
+	}
+	if editedUpdateID != "12900" {
+		t.Errorf("edited update ID = %q, want 12900", editedUpdateID)
+	}
+	if createdUpdate {
+		t.Error("unexpectedly created a new update")
+	}
+
+	// 2. 测试 overwritePrevious: true 且内容已相同时幂等返回，不触发多余请求
+	editedUpdateID = ""
+	resSame, err := client.createUpdate(context.Background(), "token", "4201", "旧标题", "旧内容", false, true)
+	if err != nil {
+		t.Fatalf("createUpdate same failed: %v", err)
+	}
+	if resSame.ID != "12900" {
+		t.Errorf("update ID = %q, want 12900", resSame.ID)
+	}
+	if editedUpdateID != "" {
+		t.Errorf("should not call editUpdate when content is already identical")
+	}
+
+	// 3. 测试 overwritePrevious: false 时正常创建新 update
+	resNew, err := client.createUpdate(context.Background(), "token", "4201", "新版本标题2", "新版本说明2", false, false)
+	if err != nil {
+		t.Fatalf("createUpdate new failed: %v", err)
+	}
+	if resNew.ID != "12999" {
+		t.Errorf("new update ID = %q, want 12999", resNew.ID)
+	}
+	if !createdUpdate {
+		t.Error("expected createUpdate to create a new update when overwritePrevious is false")
+	}
+}
+
+func TestBandBBSOverwriteCleansResidualSameVersionStringWithoutDuplicateDelete(t *testing.T) {
+	var deletedVersions []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/resources/4201/versions":
+			// 包含最新版本 13500 (10.25)，以及一个更早的残留同名版本 13490 (10.25)，还有一个其他版本 13400 (9.0)
+			_, _ = w.Write([]byte(`{"versions":[
+				{"resource_version_id":13400,"version_string":"9.0"},
+				{"resource_version_id":13490,"version_string":"10.25"},
+				{"resource_version_id":13500,"version_string":"10.25"}
+			]}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/resource-versions/":
+			_, _ = w.Write([]byte(`{"success":true,"version":{"resource_version_id":13510,"version_string":"10.25"}}`))
+		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/resource-versions/"):
+			parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+			deletedVersions = append(deletedVersions, parts[len(parts)-1])
+			_, _ = w.Write([]byte(`{"success":true}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := New(server.URL, nil, nil)
+	res, err := client.replaceVersion(context.Background(), "token", "4201", "10.25", "app.rpk", 100, "key", false, true)
+	if err != nil {
+		t.Fatalf("replaceVersion failed: %v", err)
+	}
+	if res.ID != "13510" {
+		t.Fatalf("created ID = %s, want 13510", res.ID)
+	}
+	// 期望先删除了 latestVersion (13500)，随后清理了同名残留 (13490)，而 13400 (9.0) 不受影响，且 13500 不被重复删除
+	if len(deletedVersions) != 2 || deletedVersions[0] != "13500" || deletedVersions[1] != "13490" {
+		t.Fatalf("deleted versions = %v, want [13500 13490]", deletedVersions)
+	}
+}

@@ -83,15 +83,16 @@ func (c *Client) replaceVersion(ctx context.Context, token, resourceID, versionS
 	if err != nil {
 		return versionResult{}, err
 	}
+	var deletedID int
 	if overwritePrevious {
 		if previous := latestVersion(oldVersions); previous != nil {
 			if err := c.deleteVersion(ctx, token, strconv.Itoa(previous.ID)); err != nil {
 				return created, fmt.Errorf("remove previous version %s: %w", strconv.Itoa(previous.ID), err)
 			}
+			deletedID = previous.ID
 		}
-		return created, nil
 	}
-	if err := c.removePreviousVersions(ctx, token, oldVersions, versionString, createdID(created)); err != nil {
+	if err := c.removePreviousVersions(ctx, token, oldVersions, versionString, createdID(created), deletedID); err != nil {
 		return created, err
 	}
 	return created, nil
@@ -113,12 +114,19 @@ func createdID(version versionResult) int {
 	return id
 }
 
-func (c *Client) removePreviousVersions(ctx context.Context, token string, versions []versionSummary, versionString string, keepID int) error {
+func (c *Client) removePreviousVersions(ctx context.Context, token string, versions []versionSummary, versionString string, keepID int, ignoreIDs ...int) error {
 	if versionString == "" {
 		return nil
 	}
+	ignored := make(map[int]bool, len(ignoreIDs)+1)
+	ignored[keepID] = true
+	for _, id := range ignoreIDs {
+		if id > 0 {
+			ignored[id] = true
+		}
+	}
 	for _, old := range versions {
-		if old.VersionString != versionString || old.ID == keepID {
+		if old.VersionString != versionString || ignored[old.ID] {
 			continue
 		}
 		if err := c.deleteVersion(ctx, token, strconv.Itoa(old.ID)); err != nil {
@@ -204,10 +212,22 @@ type updateSummary struct {
 	ID      int    `json:"resource_update_id"`
 	Title   string `json:"title"`
 	Message string `json:"message"`
+	CanEdit bool   `json:"can_edit"`
 }
 
-func (c *Client) createUpdate(ctx context.Context, token, resourceID, title, message string, reconcile bool) (updateResult, error) {
-	if reconcile {
+func (c *Client) createUpdate(ctx context.Context, token, resourceID, title, message string, reconcile, overwritePrevious bool) (updateResult, error) {
+	if overwritePrevious {
+		updates, err := c.listUpdates(ctx, token, resourceID)
+		if err != nil {
+			return updateResult{}, fmt.Errorf("list existing updates: %w", err)
+		}
+		if previous := latestUpdate(updates); previous != nil {
+			if previous.Title == title && previous.Message == message {
+				return updateResult{ID: strconv.Itoa(previous.ID)}, nil
+			}
+			return c.editUpdate(ctx, token, strconv.Itoa(previous.ID), title, message)
+		}
+	} else if reconcile {
 		updates, err := c.listUpdates(ctx, token, resourceID)
 		if err != nil {
 			return updateResult{}, fmt.Errorf("list existing updates: %w", err)
@@ -216,6 +236,10 @@ func (c *Client) createUpdate(ctx context.Context, token, resourceID, title, mes
 			return updateResult{ID: strconv.Itoa(existing.ID)}, nil
 		}
 	}
+	return c.newUpdate(ctx, token, resourceID, title, message)
+}
+
+func (c *Client) newUpdate(ctx context.Context, token, resourceID, title, message string) (updateResult, error) {
 	form := url.Values{
 		"resource_id": {resourceID},
 		"title":       {title},
@@ -233,6 +257,40 @@ func (c *Client) createUpdate(ctx context.Context, token, resourceID, title, mes
 		return updateResult{}, fmt.Errorf("BandBBS returned no resource update id")
 	}
 	return updateResult{ID: strconv.Itoa(response.Update.ID)}, nil
+}
+
+func (c *Client) editUpdate(ctx context.Context, token, updateID, title, message string) (updateResult, error) {
+	form := url.Values{
+		"title":   {title},
+		"message": {message},
+	}
+	var response struct {
+		Success bool `json:"success"`
+		Update  struct {
+			ID int `json:"resource_update_id"`
+		} `json:"update"`
+	}
+	endpoint := c.apiURL + "/resource-updates/" + url.PathEscape(updateID) + "/"
+	if err := c.request(ctx, token, http.MethodPost, endpoint, strings.NewReader(form.Encode()), "application/x-www-form-urlencoded", &response); err != nil {
+		return updateResult{}, fmt.Errorf("edit previous update %s: %w", updateID, err)
+	}
+	id := response.Update.ID
+	if id == 0 {
+		parsed, _ := strconv.Atoi(updateID)
+		id = parsed
+	}
+	return updateResult{ID: strconv.Itoa(id)}, nil
+}
+
+func latestUpdate(updates []updateSummary) *updateSummary {
+	var latest *updateSummary
+	for index := range updates {
+		update := &updates[index]
+		if latest == nil || update.ID > latest.ID {
+			latest = update
+		}
+	}
+	return latest
 }
 
 func (c *Client) listUpdates(ctx context.Context, token, resourceID string) ([]updateSummary, error) {

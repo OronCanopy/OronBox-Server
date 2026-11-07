@@ -3,7 +3,7 @@
     {
       "id": "terms",
       "category": "legal",
-      "revision": 2,
+      "revision": 3,
       "require_agreement": true,
       "titles": {
         "zh": "用户协议与免责声明",
@@ -17,7 +17,7 @@
     {
       "id": "privacy",
       "category": "legal",
-      "revision": 2,
+      "revision": 3,
       "require_agreement": true,
       "titles": {
         "zh": "隐私说明",
@@ -31,7 +31,7 @@
     {
       "id": "resource-publishing",
       "category": "legal",
-      "revision": 1,
+      "revision": 3,
       "require_agreement": true,
       "titles": {
         "zh": "资源发布协议",
@@ -45,7 +45,7 @@
     {
       "id": "review-rules",
       "category": "legal",
-      "revision": 1,
+      "revision": 3,
       "require_agreement": false,
       "titles": {
         "zh": "审核规则",

@@ -378,7 +378,7 @@ func (c *Client) PublishWithProgress(ctx context.Context, token, creatorID strin
 		}
 		result.Resources[category] = categoryResult
 		if cfg.VersionTitle != "" && categoryResult.UpdateID == "" {
-			update, updateErr := c.createUpdate(ctx, token, resourceID, cfg.VersionTitle, cfg.VersionMessage, reconcileUpdate)
+			update, updateErr := c.createUpdate(ctx, token, resourceID, cfg.VersionTitle, cfg.VersionMessage, reconcileUpdate, cfg.OverwritePrevious)
 			if updateErr != nil {
 				return result, fmt.Errorf("create update in category %d: %w", target.CategoryID, updateErr)
 			}

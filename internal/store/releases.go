@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"regexp"
 	"strings"
 	"time"
 
@@ -73,6 +74,28 @@ type UpstreamRelease struct {
 	PublishedAt time.Time `json:"published_at"`
 }
 
+var (
+	fullChangelogLinePattern   = regexp.MustCompile(`(?im)^\s*\*{0,2}Full Changelog\*{0,2}\s*:.*$`)
+	releaseNotesDividerPattern = regexp.MustCompile(`(?m)(?:^|\n)[ \t]*---[ \t]*(?:\n|$)`)
+)
+
+func SplitUpstreamReleaseNotes(body string) (zh, en string) {
+	cleaned := strings.ReplaceAll(body, "\r\n", "\n")
+	cleaned = strings.TrimSpace(fullChangelogLinePattern.ReplaceAllString(cleaned, ""))
+	if cleaned == "" {
+		return "", ""
+	}
+	parts := releaseNotesDividerPattern.Split(cleaned, -1)
+	if len(parts) >= 2 {
+		zhPart := strings.TrimSpace(parts[0])
+		enPart := strings.TrimSpace(strings.Join(parts[1:], "\n\n---\n\n"))
+		if zhPart != "" && enPart != "" {
+			return zhPart, enPart
+		}
+	}
+	return "", cleaned
+}
+
 func (s *Store) SyncAppReleases(ctx context.Context, items []UpstreamRelease) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -85,12 +108,13 @@ func (s *Store) SyncAppReleases(ctx context.Context, items []UpstreamRelease) er
 			continue
 		}
 		ids = append(ids, r.ID)
+		notesZH, notesEN := SplitUpstreamReleaseNotes(r.Body)
 		var existing string
 		// Adopt the legacy stable all-platform record, preserving its policy fields.
 		if err = tx.QueryRowContext(ctx, `SELECT id::text FROM app_releases WHERE channel='stable' AND platform='all' AND arch='all' AND version=$1`, strings.TrimPrefix(r.Tag, "v")).Scan(&existing); err == nil {
-			_, err = tx.ExecContext(ctx, `UPDATE app_releases SET source_id=$2,tag=$3,source_available=true,notes_en=$4,published_at=$5,updated_at=now() WHERE id=$1`, existing, r.ID, r.Tag, r.Body, r.PublishedAt)
+			_, err = tx.ExecContext(ctx, `UPDATE app_releases SET source_id=$2,tag=$3,source_available=true,notes_zh=CASE WHEN $4<>'' THEN $4 ELSE notes_zh END,notes_en=$5,published_at=$6,updated_at=now() WHERE id=$1`, existing, r.ID, r.Tag, notesZH, notesEN, r.PublishedAt)
 		} else if errors.Is(err, sql.ErrNoRows) {
-			_, err = tx.ExecContext(ctx, `INSERT INTO app_releases(id,version,channel,platform,arch,source_id,tag,notes_en,published_at)VALUES($1,$2,'stable','all','all',$3,$4,$5,$6) ON CONFLICT(source_id)DO UPDATE SET version=excluded.version,tag=excluded.tag,notes_en=excluded.notes_en,published_at=excluded.published_at,source_available=true,updated_at=now()`, uuid.NewString(), strings.TrimPrefix(r.Tag, "v"), r.ID, r.Tag, r.Body, r.PublishedAt)
+			_, err = tx.ExecContext(ctx, `INSERT INTO app_releases(id,version,channel,platform,arch,source_id,tag,notes_zh,notes_en,published_at)VALUES($1,$2,'stable','all','all',$3,$4,$5,$6,$7) ON CONFLICT(source_id)DO UPDATE SET version=excluded.version,tag=excluded.tag,notes_zh=CASE WHEN excluded.notes_zh<>'' THEN excluded.notes_zh ELSE app_releases.notes_zh END,notes_en=excluded.notes_en,published_at=excluded.published_at,source_available=true,updated_at=now()`, uuid.NewString(), strings.TrimPrefix(r.Tag, "v"), r.ID, r.Tag, notesZH, notesEN, r.PublishedAt)
 		}
 		if err != nil {
 			return err
