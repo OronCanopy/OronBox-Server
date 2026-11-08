@@ -23,7 +23,7 @@ var ErrAdminReviewConflict = errors.New("review case changed or is not eligible 
 func (query AdminReviewQuery) normalized() AdminReviewQuery {
 	query.Search = strings.TrimSpace(query.Search)
 	query.Owner = strings.TrimSpace(query.Owner)
-	if query.Kind != "quickapp" && query.Kind != "watchface" {
+	if query.Kind != "quickapp" && query.Kind != "watchface" && query.Kind != "module" {
 		query.Kind = ""
 	}
 	if query.Target != "oronbox" && query.Target != "bandbbs" && query.Target != "astrobox" {

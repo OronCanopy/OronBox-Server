@@ -410,6 +410,8 @@ func kindLabel(value any) string {
 		return "快应用"
 	case "watchface":
 		return "表盘"
+	case "module":
+		return "模块"
 	case "report", "resource_report":
 		return "资源举报"
 	case "comment_report":

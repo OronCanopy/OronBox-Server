@@ -27,7 +27,7 @@ func (query AdminCollectionQuery) normalized() AdminCollectionQuery {
 	query.Kind = strings.ToLower(strings.TrimSpace(query.Kind))
 	query.State = strings.ToLower(strings.TrimSpace(query.State))
 	query.Sort = strings.ToLower(strings.TrimSpace(query.Sort))
-	if query.Kind != "quickapp" && query.Kind != "watchface" {
+	if query.Kind != "quickapp" && query.Kind != "watchface" && query.Kind != "module" {
 		query.Kind = ""
 	}
 	switch query.State {

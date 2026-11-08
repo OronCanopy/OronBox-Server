@@ -21,7 +21,7 @@ func (query AdminResourceQuery) normalized() AdminResourceQuery {
 	if query.PerPage > 100 {
 		query.PerPage = 100
 	}
-	if query.Kind != "quickapp" && query.Kind != "watchface" {
+	if query.Kind != "quickapp" && query.Kind != "watchface" && query.Kind != "module" {
 		query.Kind = ""
 	}
 	if query.Moderation != "visible" && query.Moderation != "suspended" && query.Moderation != "frozen" {

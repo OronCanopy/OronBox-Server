@@ -113,7 +113,11 @@ func (a *App) handleAdminRevisionArtifactUpload(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
-	if (detail.Resource.Kind == "quickapp") != (analysis.Kind == resourcecore.QuickApp) {
+	expectedAdminKind := resourcecore.QuickApp
+	if detail.Resource.Kind == "watchface" || detail.Resource.Kind == "module" {
+		expectedAdminKind = resourcecore.Watchface
+	}
+	if analysis.Kind != expectedAdminKind {
 		http.Error(w, "resource file kind does not match resource", http.StatusBadRequest)
 		return
 	}

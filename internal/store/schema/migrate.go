@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion int64 = 19
+const schemaVersion int64 = 20
 
 // Migrate installs the current schema into an empty database.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -52,6 +52,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 				{from: 16, apply: migrateSchemaV17},
 				{from: 17, apply: migrateSchemaV18},
 				{from: 18, apply: migrateSchemaV19},
+				{from: 19, apply: migrateSchemaV20},
 			}
 			for _, step := range steps {
 				if installedVersion.Int64 > step.from {

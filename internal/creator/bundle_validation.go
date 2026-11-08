@@ -136,7 +136,11 @@ func (s *Service) verifyBundleArtifacts(files map[string]*zip.File, kind Resourc
 		if ref.Type != declaredType {
 			return nil, fmt.Errorf("%w: %s type declaration does not match its payload", ErrInvalid, ref.File)
 		}
-		if (kind == QuickApp) != (analysis.Kind == resourcecore.QuickApp) {
+		expectedKind := resourcecore.QuickApp
+		if kind == Watchface || kind == Module {
+			expectedKind = resourcecore.Watchface
+		}
+		if analysis.Kind != expectedKind {
 			return nil, fmt.Errorf("%w: %s does not match the resource kind", ErrInvalid, ref.File)
 		}
 		if required && len(ref.DeviceIDs) < 1 {

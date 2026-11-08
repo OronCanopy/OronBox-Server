@@ -123,9 +123,13 @@ func (s *Service) mapPublications(ctx context.Context, kind ResourceKind, artifa
 						threadPrefixID = v.ThreadPrefixes["watchface"]
 					}
 				}
+				prefixID := cfg.ResourcePrefixes[string(kind)]
+				if prefixID == 0 {
+					prefixID = cfg.ResourcePrefixes["watchface"]
+				}
 				targetMap := map[string]any{
 					"category_id":     v.CategoryID,
-					"prefix_id":       cfg.ResourcePrefixes[string(kind)],
+					"prefix_id":       prefixID,
 					"package_id":      a.analysis.PackageID,
 					"artifact_sha256": a.sha256,
 				}

@@ -96,7 +96,7 @@ CREATE TABLE blog_posts (
 CREATE TABLE resources (
  id uuid PRIMARY KEY, owner_id uuid NOT NULL REFERENCES users(id), slug text NOT NULL, draft_name text NOT NULL DEFAULT '',
  platform text NOT NULL DEFAULT 'vela_os' CHECK (platform='vela_os'),
- kind text NOT NULL CHECK (kind IN ('quickapp','watchface')),
+ kind text NOT NULL CHECK (kind IN ('quickapp','watchface','module')),
 	moderation_state text NOT NULL DEFAULT 'visible' CHECK (moderation_state IN ('visible','suspended','frozen','deleted')),
  moderation_by text CHECK (moderation_by IN ('owner','admin')),
  moderation_reason text NOT NULL DEFAULT '',
@@ -153,7 +153,7 @@ ALTER TABLE resources ADD CONSTRAINT resources_current_revision_fk FOREIGN KEY (
 CREATE TABLE resource_collections (
  id uuid PRIMARY KEY, owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  slug text NOT NULL, platform text NOT NULL DEFAULT 'vela_os' CHECK (platform='vela_os'),
- kind text NOT NULL CHECK (kind IN ('quickapp','watchface')), current_revision_id uuid, enabled boolean NOT NULL DEFAULT true,
+ kind text NOT NULL CHECK (kind IN ('quickapp','watchface','module')), current_revision_id uuid, enabled boolean NOT NULL DEFAULT true,
 	 representative_resource_id uuid REFERENCES resources(id) ON DELETE SET NULL, published_at timestamptz,
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(owner_id,slug)

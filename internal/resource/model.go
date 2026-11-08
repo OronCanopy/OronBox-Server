@@ -11,6 +11,7 @@ const (
 
 	QuickApp  Kind = "quickapp"
 	Watchface Kind = "watchface"
+	Module    Kind = "module"
 	ZeppApp   Kind = "zepp_app"
 	Firmware  Kind = "firmware"
 )
@@ -39,7 +40,7 @@ type Revision struct {
 func ValidProfile(platform Platform, kind Kind) bool {
 	switch platform {
 	case VelaOS:
-		return kind == QuickApp || kind == Watchface
+		return kind == QuickApp || kind == Watchface || kind == Module
 	case ZeppOS:
 		return kind == ZeppApp || kind == Watchface
 	default:

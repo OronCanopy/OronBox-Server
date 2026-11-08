@@ -139,3 +139,51 @@ func TestVerifyBundleMediaUndecodableImage(t *testing.T) {
 		t.Fatalf("verifyBundleMedia error = %v, want ErrInvalid", err)
 	}
 }
+
+func TestVerifyBundleArtifactsModuleKindWithWatchfacePayload(t *testing.T) {
+	service := New(nil, nil, Limits{
+		UploadMaxBytes: 10 << 20,
+	})
+
+	// Valid watchface binary header
+	facePayload := make([]byte, 128)
+	copy(facePayload, []byte{0x5a, 0xa5, 0x34, 0x12})
+	digest := sha256.Sum256(facePayload)
+	sha := hex.EncodeToString(digest[:])
+
+	var zipBuf bytes.Buffer
+	zw := zip.NewWriter(&zipBuf)
+	w, _ := zw.Create("artifacts/module_face.bin")
+	w.Write(facePayload)
+	zw.Close()
+
+	zr, _ := zip.NewReader(bytes.NewReader(zipBuf.Bytes()), int64(zipBuf.Len()))
+	files := make(map[string]*zip.File)
+	for _, f := range zr.File {
+		files[f.Name] = f
+	}
+
+	// When kind is Module, watchface binary declared as velaos_watchface is accepted
+	refs := []publishArtifactRef{
+		{
+			File:         "artifacts/module_face.bin",
+			OriginalName: "module_face.bin",
+			Type:         "velaos_watchface",
+			SHA256:       sha,
+			DeviceIDs:    []string{"dev-1"},
+		},
+	}
+	verified, err := service.verifyBundleArtifacts(files, Module, refs, true)
+	if err != nil {
+		t.Fatalf("verifyBundleArtifacts for Module failed: %v", err)
+	}
+	if len(verified) != 1 || verified[0].sha256 != sha {
+		t.Fatalf("verified artifact mismatch: %+v", verified)
+	}
+
+	// When kind is QuickApp, watchface payload is rejected
+	_, err = service.verifyBundleArtifacts(files, QuickApp, refs, true)
+	if err == nil || !errors.Is(err, ErrInvalid) {
+		t.Fatalf("verifyBundleArtifacts for QuickApp with watchface payload should fail, got: %v", err)
+	}
+}

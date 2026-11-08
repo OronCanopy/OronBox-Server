@@ -172,7 +172,7 @@ func (c *Client) Publish(ctx context.Context, token, ownerName string, rawSnapsh
 		switch item.Kind {
 		case "quickapp":
 			value = "quick_app"
-		case "watchface":
+		case "watchface", "module":
 			value = "watchface"
 		default:
 			return Result{}, fmt.Errorf("AstroBox does not support resource kind %s", item.Kind)
