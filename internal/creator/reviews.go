@@ -133,7 +133,7 @@ ORDER BY p.updated_at DESC LIMIT 1`, reviewID, ownerID).Scan(&repo, &externalURL
 }
 
 func (s *Service) ReviewQueue(ctx context.Context) ([]Workspace, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT DISTINCT r.owner_id::text,r.id::text FROM review_cases c JOIN resource_revisions rr ON rr.id=c.revision_id JOIN resources r ON r.id=rr.resource_id WHERE c.state='pending' ORDER BY r.id::text`)
+	rows, err := s.db.QueryContext(ctx, `SELECT DISTINCT r.owner_id::text,r.id::text FROM review_cases c JOIN resource_revisions rr ON rr.id=c.revision_id JOIN resources r ON r.id=rr.resource_id WHERE c.state='pending' AND r.moderation_state <> 'deleted' ORDER BY r.id::text`)
 	if err != nil {
 		return nil, err
 	}

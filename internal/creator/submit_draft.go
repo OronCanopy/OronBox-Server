@@ -79,6 +79,8 @@ func (s *Service) SubmitDraftAt(ctx context.Context, uid, rid, revisionID string
 		kind := "velaos_quickapp"
 		if w.Resource.Kind == Watchface {
 			kind = "velaos_watchface"
+		} else if w.Resource.Kind == Canopus {
+			kind = "velaos_canopus"
 		}
 		artifacts = append(artifacts, map[string]any{"file": path, "original_name": a.OriginalName, "type": kind, "package_id": a.PackageID, "package_version": a.Version, "sha256": a.BlobSHA256, "device_ids": a.DeviceIDs})
 	}

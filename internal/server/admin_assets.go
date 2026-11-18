@@ -104,7 +104,7 @@ func (a *App) handleAdminRevisionArtifactUpload(w http.ResponseWriter, r *http.R
 		return
 	}
 	analysis, err := resourcecore.Analyze(raw)
-	if err != nil || analysis.Platform != resourcecore.VelaOS || (analysis.Kind != resourcecore.QuickApp && analysis.Kind != resourcecore.Watchface) {
+	if err != nil || analysis.Platform != resourcecore.VelaOS || (analysis.Kind != resourcecore.QuickApp && analysis.Kind != resourcecore.Watchface && analysis.Kind != resourcecore.Canopus) {
 		http.Error(w, "unsupported VelaOS resource file", http.StatusBadRequest)
 		return
 	}
@@ -114,8 +114,10 @@ func (a *App) handleAdminRevisionArtifactUpload(w http.ResponseWriter, r *http.R
 		return
 	}
 	expectedAdminKind := resourcecore.QuickApp
-	if detail.Resource.Kind == "watchface" || detail.Resource.Kind == "module" {
+	if detail.Resource.Kind == "watchface" {
 		expectedAdminKind = resourcecore.Watchface
+	} else if detail.Resource.Kind == "canopus" {
+		expectedAdminKind = resourcecore.Canopus
 	}
 	if analysis.Kind != expectedAdminKind {
 		http.Error(w, "resource file kind does not match resource", http.StatusBadRequest)

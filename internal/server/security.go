@@ -13,7 +13,7 @@ const (
 	// baseCSP denies everything the console does not actually use. Scripts and
 	// styles are same-origin only: icons are an inline sprite and type uses
 	// system fonts, so a font CDN is not part of the policy.
-	baseCSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'" +
+	baseCSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://www.bandbbs.cn https://*.bandbbs.cn https://avatars.githubusercontent.com; connect-src 'self'" +
 		"; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
 
 	// transitionCSP drops connect-src as well because the OAuth handoff page

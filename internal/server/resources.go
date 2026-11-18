@@ -182,6 +182,15 @@ func (a *App) handleDevices(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"devices": devices})
 }
 
+func (a *App) handleDeviceModels(w http.ResponseWriter, r *http.Request) {
+	models, err := a.store.DeviceModelsMap(r.Context())
+	if err != nil {
+		httpx.WriteJSON(w, http.StatusInternalServerError, httpx.ErrorBody("device_models_failed", err.Error()))
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, models)
+}
+
 var sha256Pattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 // handleBlob is the single choke point for public content. Preview images,

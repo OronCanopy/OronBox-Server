@@ -107,6 +107,12 @@ func (s *Service) Delete(ctx context.Context, ownerID, resourceID string, target
 	if _, err = tx.ExecContext(ctx, `UPDATE publications p SET state='cancelled',lease_token=NULL,lease_expires_at=NULL,error_message='resource deleted',updated_at=now() FROM resource_revisions rr WHERE rr.id=p.revision_id AND rr.resource_id=$1 AND p.state IN ('pending','running','reviewing','failed')`, resourceID); err != nil {
 		return result, err
 	}
+	if _, err = tx.ExecContext(ctx, `UPDATE review_cases rc SET state='superseded',note='resource deleted by owner',updated_at=now() FROM resource_revisions rr WHERE rr.id=rc.revision_id AND rr.resource_id=$1 AND rc.state='pending'`, resourceID); err != nil {
+		return result, err
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE resource_revisions SET state='superseded' WHERE resource_id=$1 AND state='submitted'`, resourceID); err != nil {
+		return result, err
+	}
 	if !history && len(steps) == 0 {
 		_, err = tx.ExecContext(ctx, `DELETE FROM resources WHERE id=$1`, resourceID)
 	} else {

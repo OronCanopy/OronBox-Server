@@ -11,11 +11,11 @@ type ResourceKind string
 const (
 	QuickApp  ResourceKind = "quickapp"
 	Watchface ResourceKind = "watchface"
-	Module    ResourceKind = "module"
+	Canopus   ResourceKind = "canopus"
 )
 
 func (kind ResourceKind) Valid() bool {
-	return kind == QuickApp || kind == Watchface || kind == Module
+	return kind == QuickApp || kind == Watchface || kind == Canopus
 }
 
 type ResourcePaidType string

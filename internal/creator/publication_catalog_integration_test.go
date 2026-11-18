@@ -20,7 +20,7 @@ func TestPublicationCatalogOverridesClaimsAndRetainsLastValidSnapshot(t *testing
 	if err := db.QueryRow(`SELECT id::text FROM devices WHERE codename='n67'`).Scan(&device); err != nil {
 		t.Fatal(err)
 	}
-	body := `{"resource_prefixes":{"app":91,"watchface":92},"bandbbs":{"n67":{"category_id":777}}}`
+	body := `{"resource_prefixes":{"app":91,"watchface":92,"canopus":93},"bandbbs":{"n67":{"category_id":777}}}`
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/repos/org/config/raw/publish.json" || r.Header.Get("Authorization") != "token private" {
 			t.Error("incorrect Gitea request")

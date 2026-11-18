@@ -23,7 +23,7 @@ var ErrAdminReviewConflict = errors.New("review case changed or is not eligible 
 func (query AdminReviewQuery) normalized() AdminReviewQuery {
 	query.Search = strings.TrimSpace(query.Search)
 	query.Owner = strings.TrimSpace(query.Owner)
-	if query.Kind != "quickapp" && query.Kind != "watchface" && query.Kind != "module" {
+	if query.Kind != "quickapp" && query.Kind != "watchface" && query.Kind != "canopus" {
 		query.Kind = ""
 	}
 	if query.Target != "oronbox" && query.Target != "bandbbs" && query.Target != "astrobox" {
@@ -99,6 +99,11 @@ func (s *Store) AdminReviews(ctx context.Context, raw AdminReviewQuery) (AdminRe
 		where = append(where, `review.state <> 'pending'`)
 	} else if query.State != "" {
 		add(`review.state=?`, query.State)
+		if query.State == "pending" {
+			where = append(where, `resource.moderation_state <> 'deleted'`)
+		}
+	} else {
+		where = append(where, `resource.moderation_state <> 'deleted'`)
 	}
 	if query.From != nil {
 		add(`review.created_at>=?`, *query.From)

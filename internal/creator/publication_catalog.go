@@ -62,7 +62,7 @@ func (s *Service) SyncPublicationCatalog(ctx context.Context, c config.DeviceCat
 	if cfg.ResourcePrefixes["quickapp"] == 0 {
 		cfg.ResourcePrefixes["quickapp"] = cfg.ResourcePrefixes["app"]
 	}
-	if cfg.ResourcePrefixes["quickapp"] <= 0 || cfg.ResourcePrefixes["watchface"] <= 0 {
+	if cfg.ResourcePrefixes["quickapp"] <= 0 || cfg.ResourcePrefixes["watchface"] <= 0 || cfg.ResourcePrefixes["canopus"] <= 0 {
 		return fmt.Errorf("missing resource prefixes")
 	}
 	for _, v := range cfg.BandBBS {

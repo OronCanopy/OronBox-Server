@@ -74,6 +74,7 @@ func (a *App) registerClientRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/announcements/unread", a.protectClientRoute(a.requireUser(http.HandlerFunc(a.handleAnnouncements))))
 	mux.Handle("POST /api/v1/announcements/read", a.protectClientRoute(a.requireUser(http.HandlerFunc(a.handleReadAnnouncements))))
 	mux.Handle("GET /api/v1/devices", a.protectClientRoute(http.HandlerFunc(a.handleDevices)))
+	mux.Handle("GET /api/v1/device-models", a.protectClientRoute(http.HandlerFunc(a.handleDeviceModels)))
 	mux.Handle("GET /api/v1/meta/legal", a.protectClientRoute(http.HandlerFunc(a.handleLegalManifest)))
 	mux.Handle("GET /api/v1/meta/legal/{document}", a.protectClientRoute(http.HandlerFunc(a.handleLegalDocument)))
 	mux.Handle("GET /api/v1/app/releases", a.protectClientRoute(http.HandlerFunc(a.handleAppRelease)))

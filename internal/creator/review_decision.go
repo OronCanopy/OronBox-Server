@@ -172,6 +172,13 @@ func (s *Service) decideReview(ctx context.Context, tx *sql.Tx, revisionID, revi
 	if err = tx.QueryRowContext(ctx, `UPDATE resource_revisions SET state=$2 WHERE id=$1 RETURNING resource_id::text,revision_no,created_via`, revisionID, revisionState).Scan(&resourceID, &revisionNo, &createdVia); err != nil {
 		return reviewOutcome{}, err
 	}
+	var resourceModeration string
+	if err = tx.QueryRowContext(ctx, `SELECT moderation_state FROM resources WHERE id=$1`, resourceID).Scan(&resourceModeration); err != nil {
+		return reviewOutcome{}, err
+	}
+	if resourceModeration == "deleted" {
+		return reviewOutcome{}, fmt.Errorf("%w: resource has been deleted", ErrConflict)
+	}
 	var acquired bool
 	if err = tx.QueryRowContext(ctx, `SELECT pg_try_advisory_xact_lock(hashtextextended($1,7319))`, resourceID).Scan(&acquired); err != nil {
 		return reviewOutcome{}, err

@@ -74,7 +74,7 @@ The grant is not used to publish other users' or other resources' content and is
 
 ## 7. Publishing to AstroBox
 
-Only VelaOS quick apps and watchfaces may target AstroBox. Zepp OS resources cannot be submitted to AstroBox-Repo.
+Only VelaOS quick apps, watchfaces, and Canopus modules may target AstroBox. Zepp OS resources cannot be submitted to AstroBox-Repo.
 
 With the user's GitHub account, OronBox may, upon the user's confirmation, create or update a resource repository, fork AstroBox-Repo, create branches and commits, and open a pull request.
 

@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
 	"crypto/rand"
@@ -41,10 +42,106 @@ func Analyze(data []byte) (Analysis, error) {
 	if len(data) >= 4 && bytes.Equal(data[:4], []byte{0x60, 0x5a, 0x5a, 0x7e}) {
 		return Analysis{Platform: VelaOS, Kind: Firmware, PackageFormat: "vela_firmware", Evidence: []string{"Vela firmware magic=605a5a7e"}, Payload: data}, nil
 	}
+	if len(data) >= 262 && string(data[257:262]) == "ustar" {
+		return analyzeCanopus(data)
+	}
 	if len(data) < 4 || !bytes.Equal(data[:4], []byte{'P', 'K', 3, 4}) {
 		return Analysis{}, fmt.Errorf("unrecognized resource payload")
 	}
 	return analyzeZip(data, 0)
+}
+
+type canopusArtifact struct {
+	TargetID string `json:"target_id"`
+	Path     string `json:"path"`
+}
+
+type canopusManifest struct {
+	Schema      int               `json:"schema"`
+	ModuleID    string            `json:"module_id"`
+	CanopusABI  string            `json:"canopus_abi"`
+	Version     string            `json:"version"`
+	VersionCode *int64            `json:"version_code"`
+	Artifacts   []canopusArtifact `json:"artifacts"`
+}
+
+func analyzeCanopus(data []byte) (Analysis, error) {
+	files := map[string][]byte{}
+	reader := tar.NewReader(bytes.NewReader(data))
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return Analysis{}, fmt.Errorf("invalid Canopus tar: %w", err)
+		}
+		name := strings.ReplaceAll(header.Name, "\\", "/")
+		clean := path.Clean(name)
+		if name == "" || clean != name || strings.HasPrefix(name, "/") || strings.HasPrefix(clean, "../") || clean == "." || strings.Contains(name, "\x00") || strings.Contains(name, "\\") || strings.Contains(name, "/../") {
+			return Analysis{}, fmt.Errorf("unsafe Canopus path %q", name)
+		}
+		if header.Typeflag != tar.TypeReg && header.Typeflag != 0 {
+			return Analysis{}, fmt.Errorf("Canopus entry is not a regular file: %s", name)
+		}
+		if _, exists := files[name]; exists {
+			return Analysis{}, fmt.Errorf("duplicate Canopus entry %q", name)
+		}
+		if header.Size < 0 || header.Size > 64<<20 {
+			return Analysis{}, fmt.Errorf("Canopus entry is too large: %s", name)
+		}
+		payload, err := io.ReadAll(io.LimitReader(reader, header.Size+1))
+		if err != nil || int64(len(payload)) != header.Size {
+			return Analysis{}, fmt.Errorf("cannot read Canopus entry %q", name)
+		}
+		files[name] = payload
+	}
+	manifestBytes, ok := files["manifest.json"]
+	if !ok {
+		return Analysis{}, fmt.Errorf("Canopus package has no manifest.json")
+	}
+	var manifest canopusManifest
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		return Analysis{}, fmt.Errorf("invalid Canopus manifest: %w", err)
+	}
+	if manifest.Schema != 1 || !validCanopusModuleID(manifest.ModuleID) || manifest.CanopusABI != "2" || len(manifest.Artifacts) == 0 {
+		return Analysis{}, fmt.Errorf("invalid Canopus package manifest")
+	}
+	targets := make([]string, 0, len(manifest.Artifacts))
+	seenTargets := map[string]bool{}
+	for _, artifact := range manifest.Artifacts {
+		if artifact.TargetID == "" || seenTargets[artifact.TargetID] {
+			return Analysis{}, fmt.Errorf("duplicate or empty Canopus target")
+		}
+		if _, exists := files[artifact.Path]; !exists {
+			return Analysis{}, fmt.Errorf("Canopus package is missing %s", artifact.Path)
+		}
+		seenTargets[artifact.TargetID] = true
+		targets = append(targets, artifact.TargetID)
+	}
+	return Analysis{
+		Platform:      VelaOS,
+		Kind:          Canopus,
+		PackageFormat: "vela_canopus",
+		PackageID:     manifest.ModuleID,
+		Version:       manifest.Version,
+		VersionCode:   manifest.VersionCode,
+		Target:        strings.Join(targets, ","),
+		Evidence:      []string{"Canopus tar package", "manifest.json schema=1", "canopus_abi=2"},
+		Payload:       data,
+	}, nil
+}
+
+func validCanopusModuleID(value string) bool {
+	if len(value) == 0 || len(value) > 16 || value[0] < 'a' || value[0] > 'z' {
+		return false
+	}
+	for _, char := range value {
+		if !(char >= 'a' && char <= 'z' || char >= '0' && char <= '9' || char == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 func analyzeZip(data []byte, depth int) (Analysis, error) {

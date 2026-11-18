@@ -126,19 +126,24 @@ func (s *Service) verifyBundleArtifacts(files map[string]*zip.File, kind Resourc
 			return nil, err
 		}
 		analysis, err := resourcecore.Analyze(payload)
-		if err != nil || analysis.Platform != resourcecore.VelaOS || (analysis.Kind != resourcecore.QuickApp && analysis.Kind != resourcecore.Watchface) {
-			return nil, fmt.Errorf("%w: %s is not a VelaOS quick app or watchface", ErrInvalid, ref.File)
+		if err != nil || analysis.Platform != resourcecore.VelaOS || (analysis.Kind != resourcecore.QuickApp && analysis.Kind != resourcecore.Watchface && analysis.Kind != resourcecore.Canopus) {
+			return nil, fmt.Errorf("%w: %s is not a supported VelaOS resource", ErrInvalid, ref.File)
 		}
 		declaredType := "velaos_quickapp"
 		if analysis.Kind == resourcecore.Watchface {
 			declaredType = "velaos_watchface"
+		} else if analysis.Kind == resourcecore.Canopus {
+			declaredType = "velaos_canopus"
 		}
 		if ref.Type != declaredType {
 			return nil, fmt.Errorf("%w: %s type declaration does not match its payload", ErrInvalid, ref.File)
 		}
 		expectedKind := resourcecore.QuickApp
-		if kind == Watchface || kind == Module {
+		switch kind {
+		case Watchface:
 			expectedKind = resourcecore.Watchface
+		case Canopus:
+			expectedKind = resourcecore.Canopus
 		}
 		if analysis.Kind != expectedKind {
 			return nil, fmt.Errorf("%w: %s does not match the resource kind", ErrInvalid, ref.File)

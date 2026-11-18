@@ -140,7 +140,7 @@ func TestVerifyBundleMediaUndecodableImage(t *testing.T) {
 	}
 }
 
-func TestVerifyBundleArtifactsModuleKindWithWatchfacePayload(t *testing.T) {
+func TestVerifyBundleArtifactsCanopusKindRejectsWatchfacePayload(t *testing.T) {
 	service := New(nil, nil, Limits{
 		UploadMaxBytes: 10 << 20,
 	})
@@ -163,7 +163,7 @@ func TestVerifyBundleArtifactsModuleKindWithWatchfacePayload(t *testing.T) {
 		files[f.Name] = f
 	}
 
-	// When kind is Module, watchface binary declared as velaos_watchface is accepted
+	// Canopus resources must not accept a watchface payload.
 	refs := []publishArtifactRef{
 		{
 			File:         "artifacts/module_face.bin",
@@ -173,17 +173,8 @@ func TestVerifyBundleArtifactsModuleKindWithWatchfacePayload(t *testing.T) {
 			DeviceIDs:    []string{"dev-1"},
 		},
 	}
-	verified, err := service.verifyBundleArtifacts(files, Module, refs, true)
-	if err != nil {
-		t.Fatalf("verifyBundleArtifacts for Module failed: %v", err)
-	}
-	if len(verified) != 1 || verified[0].sha256 != sha {
-		t.Fatalf("verified artifact mismatch: %+v", verified)
-	}
-
-	// When kind is QuickApp, watchface payload is rejected
-	_, err = service.verifyBundleArtifacts(files, QuickApp, refs, true)
+	_, err := service.verifyBundleArtifacts(files, Canopus, refs, true)
 	if err == nil || !errors.Is(err, ErrInvalid) {
-		t.Fatalf("verifyBundleArtifacts for QuickApp with watchface payload should fail, got: %v", err)
+		t.Fatalf("verifyBundleArtifacts for Canopus with watchface payload should fail, got: %v", err)
 	}
 }
