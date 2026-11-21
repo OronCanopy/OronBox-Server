@@ -103,6 +103,36 @@ func (a *App) handleGrants(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, grants)
 }
 
+func (a *App) handleResourceUpdates(w http.ResponseWriter, r *http.Request) {
+	var request struct {
+		Device    string                             `json:"device"`
+		Installed []creator.InstalledResourceVersion `json:"installed"`
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 128<<10)
+	if err := httpx.DecodeJSON(r, &request); err != nil {
+		httpx.WriteJSON(w, http.StatusBadRequest, httpx.ErrorBody("invalid_request", "Invalid resource update request"))
+		return
+	}
+	request.Device = strings.TrimSpace(request.Device)
+	if request.Device == "" || len(request.Device) > 128 || len(request.Installed) > 512 {
+		httpx.WriteJSON(w, http.StatusBadRequest, httpx.ErrorBody("invalid_request", "Invalid device or installed resource list"))
+		return
+	}
+	for _, entry := range request.Installed {
+		if (entry.Kind != "quickapp" && entry.Kind != "zepp_app" && entry.Kind != "watchface") ||
+			strings.TrimSpace(entry.PackageID) == "" || len(entry.PackageID) > 255 || entry.VersionCode < 0 {
+			httpx.WriteJSON(w, http.StatusBadRequest, httpx.ErrorBody("invalid_request", "Invalid installed resource"))
+			return
+		}
+	}
+	updates, err := a.creator.ResourceUpdates(r.Context(), request.Device, request.Installed)
+	if err != nil {
+		httpx.WriteJSON(w, http.StatusInternalServerError, httpx.ErrorBody("resource_updates_failed", "Unable to check resource updates"))
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"updates": updates})
+}
+
 func (a *App) handleListResources(w http.ResponseWriter, r *http.Request) {
 	limit := 50
 	if value, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && value > 0 && value <= 100 {

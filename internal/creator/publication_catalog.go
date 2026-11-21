@@ -62,7 +62,7 @@ func (s *Service) SyncPublicationCatalog(ctx context.Context, c config.DeviceCat
 	if cfg.ResourcePrefixes["quickapp"] == 0 {
 		cfg.ResourcePrefixes["quickapp"] = cfg.ResourcePrefixes["app"]
 	}
-	if cfg.ResourcePrefixes["quickapp"] <= 0 || cfg.ResourcePrefixes["watchface"] <= 0 || cfg.ResourcePrefixes["canopus"] <= 0 {
+	if cfg.ResourcePrefixes["quickapp"] <= 0 || cfg.ResourcePrefixes["watchface"] <= 0 {
 		return fmt.Errorf("missing resource prefixes")
 	}
 	for _, v := range cfg.BandBBS {
@@ -90,6 +90,9 @@ func (s *Service) mapPublications(ctx context.Context, kind ResourceKind, artifa
 		p := &publications[i]
 		if p.Target != PublishBandBBS {
 			continue
+		}
+		if kind == Canopus {
+			return fmt.Errorf("%w: Canopus resources cannot be published to BandBBS", ErrInvalid)
 		}
 		if cfg == nil {
 			if strict && s.RequirePublicationCatalog {

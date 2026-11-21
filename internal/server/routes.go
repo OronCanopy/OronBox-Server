@@ -59,6 +59,7 @@ func (a *App) registerClientRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/plugins/{id}/icon", a.protectClientRoute(http.HandlerFunc(a.handlePluginIcon)))
 	mux.Handle("DELETE /api/v1/plugins/{id}", a.protectClientRoute(a.requireUser(http.HandlerFunc(a.handleDeletePlugin))))
 	mux.Handle("GET /api/v1/tags", a.protectClientRoute(http.HandlerFunc(a.handleResourceAttributes)))
+	mux.Handle("POST /api/v1/resources/update-check", a.protectClientRoute(http.HandlerFunc(a.handleResourceUpdates)))
 	mux.Handle("GET /api/v1/resources/{id}", a.protectClientRoute(http.HandlerFunc(a.handleResource)))
 	mux.Handle("GET /api/v1/collections", a.protectClientRoute(http.HandlerFunc(a.handleCollections)))
 	mux.Handle("GET /api/v1/collections/{id}", a.protectClientRoute(http.HandlerFunc(a.handleCollection)))

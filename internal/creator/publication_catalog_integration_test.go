@@ -11,6 +11,27 @@ import (
 	resourcecore "github.com/zxor-org/OronBox-Server/internal/resource"
 )
 
+func TestPublicationCatalogWithoutCanopusPrefix(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"resource_prefixes":{"app":82,"watchface":81},"bandbbs":{"n67":{"category_id":777}}}`))
+	}))
+	defer upstream.Close()
+	service := &Service{RequirePublicationCatalog: true}
+	ctx := context.Background()
+	if err := service.SyncPublicationCatalog(ctx, config.DeviceCatalogConfig{BaseURL: upstream.URL, Repository: "org/config", Ref: "main"}); err != nil {
+		t.Fatal(err)
+	}
+	if cfg := service.PublicationOptions(); cfg == nil || cfg.ResourcePrefixes["quickapp"] != 82 {
+		t.Fatalf("missing publication options: %+v", cfg)
+	}
+	if err := service.mapPublications(ctx, Canopus, nil, []PublicationRequest{{Target: PublishBandBBS}}, true); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("Canopus BandBBS publication accepted: %v", err)
+	}
+	if err := service.mapPublications(ctx, Canopus, nil, []PublicationRequest{{Target: PublishOronBox}, {Target: PublishAstroBox}}, true); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPublicationCatalogOverridesClaimsAndRetainsLastValidSnapshot(t *testing.T) {
 	db := testDatabase(t)
 	s := New(db, nil, Limits{})
@@ -20,7 +41,7 @@ func TestPublicationCatalogOverridesClaimsAndRetainsLastValidSnapshot(t *testing
 	if err := db.QueryRow(`SELECT id::text FROM devices WHERE codename='n67'`).Scan(&device); err != nil {
 		t.Fatal(err)
 	}
-	body := `{"resource_prefixes":{"app":91,"watchface":92,"canopus":93},"bandbbs":{"n67":{"category_id":777}}}`
+	body := `{"resource_prefixes":{"app":91,"watchface":92},"bandbbs":{"n67":{"category_id":777}}}`
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/repos/org/config/raw/publish.json" || r.Header.Get("Authorization") != "token private" {
 			t.Error("incorrect Gitea request")
