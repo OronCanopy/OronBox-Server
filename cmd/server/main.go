@@ -155,6 +155,7 @@ func main() {
 
 	app.RefreshPolicies(ctx)
 	go app.RunReleaseSync(ctx)
+	go app.RunAstroBoxCatalogSync(ctx)
 	go app.RunConsoleSync(ctx)
 	go app.RunContentSync(ctx)
 	go app.RunPolicyRefresh(ctx)

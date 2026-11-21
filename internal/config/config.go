@@ -75,6 +75,7 @@ type BandBBSConfig struct {
 }
 
 type GitHubConfig struct {
+	ReleaseToken  string
 	ClientID      string
 	ClientSecret  string
 	RedirectURI   string
@@ -190,6 +191,7 @@ func Load() Config {
 			PublishScopes: ParseScopes(DefaultPublishScopes),
 		},
 		GitHub: GitHubConfig{
+			ReleaseToken:  env("GITHUB_TOKEN", ""),
 			ClientID:      env("GITHUB_CLIENT_ID", ""),
 			ClientSecret:  env("GITHUB_CLIENT_SECRET", ""),
 			RedirectURI:   env("GITHUB_REDIRECT_URI", ""),

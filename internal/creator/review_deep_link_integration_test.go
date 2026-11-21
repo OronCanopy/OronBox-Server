@@ -106,7 +106,7 @@ func TestReviewPageKeepsLocalAndExternalStatesSeparate(t *testing.T) {
 func TestReviewNotificationUpgradeFromV18(t *testing.T) {
 	db := testDatabase(t)
 	ctx := context.Background()
-	if _, err := db.ExecContext(ctx, `DELETE FROM schema_migrations WHERE version=19; INSERT INTO schema_migrations(version) VALUES(18);
+	if _, err := db.ExecContext(ctx, `DELETE FROM schema_migrations WHERE version>18; INSERT INTO schema_migrations(version) VALUES(18);
  CREATE OR REPLACE FUNCTION notify_review_result() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM rrev.version FROM resource_revisions rrev WHERE rrev.id=NEW.revision_id;RETURN NEW;END $$;`); err != nil {
 		t.Fatal(err)
 	}

@@ -64,7 +64,8 @@ func CORS(origins []string, next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, If-Match, X-OronBox-App-Id, X-OronBox-Version, X-OronBox-Build, X-OronBox-Platform, X-OB-Tag, X-OB-Commit, X-OB-Timestamp, X-OB-Nonce, X-OB-Signature")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, If-Match, If-None-Match, X-OronBox-App-Id, X-OronBox-Version, X-OronBox-Build, X-OronBox-Platform, X-OB-Tag, X-OB-Commit, X-OB-Timestamp, X-OB-Nonce, X-OB-Signature")
+			w.Header().Set("Access-Control-Expose-Headers", "ETag")
 			w.Header().Set("Access-Control-Max-Age", "86400")
 		}
 		if r.Method == http.MethodOptions {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion int64 = 22
+const schemaVersion int64 = 23
 
 // Migrate installs the current schema into an empty database.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -55,6 +55,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 				{from: 19, apply: migrateSchemaV20},
 				{from: 20, apply: migrateSchemaV21},
 				{from: 21, apply: migrateSchemaV22},
+				{from: 22, apply: migrateSchemaV23},
 			}
 			for _, step := range steps {
 				if installedVersion.Int64 > step.from {
@@ -102,6 +103,9 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 	}
 	if _, err := tx.ExecContext(ctx, deviceModelsSchemaV22); err != nil {
 		return fmt.Errorf("install PostgreSQL device models schema: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, upstreamCatalogSchemaV23); err != nil {
+		return fmt.Errorf("install PostgreSQL upstream catalog cache: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES($1)`, schemaVersion); err != nil {
 		return fmt.Errorf("record PostgreSQL schema v%d: %w", schemaVersion, err)

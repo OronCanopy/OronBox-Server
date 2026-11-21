@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -40,32 +39,17 @@ func (a *App) syncReleases(ctx context.Context) (synced int, syncErr error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 	all := []store.UpstreamRelease{}
-	client := &http.Client{Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	for page := 1; page <= 50; page++ {
-		req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/repos/OronCanopy/OronBox/releases?per_page=100&page=%d", a.cfg.GitHub.APIURL, page), nil)
+	for page := 1; page <= maxReleasePages; page++ {
+		value, err := a.releasePage(ctx, appReleases, page, 0)
 		if err != nil {
 			return 0, err
-		}
-		req.Header.Set("Accept", "application/vnd.github+json")
-		res, err := client.Do(req)
-		if err != nil {
-			return 0, err
-		}
-		if res.StatusCode != 200 {
-			res.Body.Close()
-			return 0, fmt.Errorf("GitHub release sync HTTP %d", res.StatusCode)
-		}
-		data, err := io.ReadAll(io.LimitReader(res.Body, (8<<20)+1))
-		res.Body.Close()
-		if err != nil || len(data) > 8<<20 {
-			return 0, fmt.Errorf("release response too large")
 		}
 		var batch []store.UpstreamRelease
-		if json.Unmarshal(data, &batch) != nil {
+		if json.Unmarshal(value.Body, &batch) != nil {
 			return 0, fmt.Errorf("invalid GitHub release response")
 		}
 		all = append(all, batch...)
-		if len(batch) < 100 {
+		if !value.HasNext {
 			if err = a.store.SyncAppReleases(ctx, all); err != nil {
 				return 0, err
 			}

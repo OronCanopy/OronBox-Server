@@ -39,6 +39,7 @@ type App struct {
 	runtime            runtimeState
 	content            contentCache
 	releaseSyncMu      sync.Mutex
+	catalogs           catalogCache
 	cfg                config.Config
 	store              *store.Store
 	bandbbs            *bandbbs.Client
